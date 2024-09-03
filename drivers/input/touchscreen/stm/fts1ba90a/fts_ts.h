@@ -842,6 +842,7 @@ struct fts_ts_info {
 	bool tsp_temp_data_skip;
 
 	struct notifier_block fts_input_nb;
+	struct notifier_block fts_notif_block;
 
 	int (*stop_device)(struct fts_ts_info *info, bool lpmode);
 	int (*start_device)(struct fts_ts_info *info);

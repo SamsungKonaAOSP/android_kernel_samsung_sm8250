@@ -53,6 +53,8 @@
 #include <linux/atomic.h>
 #endif
 
+#include "../../../../techpack/display/msm/samsung/ss_panel_notify.h"
+
 #ifdef CONFIG_OF
 #ifndef USE_OPEN_CLOSE
 #define USE_OPEN_CLOSE
@@ -120,6 +122,34 @@ static struct device_attribute attrs[] = {
 			fts_fod_pressed_show,
 			NULL),
 };
+
+static int fts_panel_state_notifier(struct notifier_block *nb,
+	unsigned long val, void *data)
+{
+	struct fts_ts_info *info = container_of(nb, struct fts_ts_info, fts_notif_block);
+	struct panel_state_data *evdata = (struct panel_state_data *)data;
+	unsigned int panel_state;
+
+	if (val != PANEL_EVENT_STATE_CHANGED)
+		goto out;
+
+	if (evdata)
+		panel_state = evdata->state;
+	else
+		goto out;
+
+	switch (panel_state) {
+	case PANEL_ON:
+		fts_input_open(info->input_dev);
+		goto out;
+	case PANEL_OFF:
+		fts_input_close(info->input_dev);
+		goto out;
+	}
+
+out:
+	return NOTIFY_OK;
+}
 
 static ssize_t fts_secure_touch_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -3218,6 +3248,9 @@ static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
 	info->ss_drv = sec_secure_touch_register(info, info->board->ss_touch_num, &info->input_dev->dev.kobj);
 #endif
 
+	info->fts_notif_block.notifier_call = fts_panel_state_notifier;
+	ss_panel_notifier_register(&info->fts_notif_block);
+
 	info->psy = power_supply_get_by_name("battery");
 	if (!info->psy)
 		input_err(true, &info->client->dev, "%s: Cannot find power supply\n", __func__);
@@ -3254,6 +3287,7 @@ err_register_input_dev_proximity:
 		info->input_dev_pad = NULL;
 	}
 err_register_input_pad:
+	ss_panel_notifier_unregister(&info->fts_notif_block);
 	input_unregister_device(info->input_dev);
 	info->input_dev = NULL;
 	info->input_dev_touch = NULL;
@@ -3358,6 +3392,7 @@ static int fts_remove(struct i2c_client *client)
 
 	info->input_dev = info->input_dev_touch;
 	input_mt_destroy_slots(info->input_dev);
+	ss_panel_notifier_unregister(&info->fts_notif_block);
 	input_unregister_device(info->input_dev);
 	info->input_dev = NULL;
 	info->input_dev_touch = NULL;

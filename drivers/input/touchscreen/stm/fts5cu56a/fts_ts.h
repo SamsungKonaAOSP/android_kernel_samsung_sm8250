@@ -864,6 +864,7 @@ struct fts_ts_info {
 	int tspid2_val;
 
 	struct notifier_block nb;
+	struct notifier_block fts_notif_block;
 	int flip_status_current;
 	int flip_status_prev;
 #ifdef CONFIG_TOUCHSCREEN_DUAL_FOLDABLE

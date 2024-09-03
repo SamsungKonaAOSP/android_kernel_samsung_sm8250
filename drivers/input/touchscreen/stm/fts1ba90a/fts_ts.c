@@ -23,6 +23,8 @@
 
 #include "fts_ts.h"
 
+#include "../../../../techpack/display/msm/samsung/ss_panel_notify.h"
+
 struct fts_ts_info *g_fts_info;
 
 #ifdef USE_OPEN_CLOSE
@@ -75,6 +77,34 @@ static struct device_attribute attrs[] = {
 			fts_secure_touch_show,
 			NULL),
 };
+
+static int fts_panel_state_notifier(struct notifier_block *nb,
+	unsigned long val, void *data)
+{
+	struct fts_ts_info *info = container_of(nb, struct fts_ts_info, fts_notif_block);
+	struct panel_state_data *evdata = (struct panel_state_data *)data;
+	unsigned int panel_state;
+
+	if (val != PANEL_EVENT_STATE_CHANGED)
+		goto out;
+
+	if (evdata)
+		panel_state = evdata->state;
+	else
+		goto out;
+
+	switch (panel_state) {
+	case PANEL_ON:
+		fts_input_open(info->input_dev);
+		goto out;
+	case PANEL_OFF:
+		fts_input_close(info->input_dev);
+		goto out;
+	}
+
+out:
+	return NOTIFY_OK;
+}
 
 static ssize_t fts_secure_touch_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -2934,6 +2964,8 @@ static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
 	}
 #endif
 
+	info->fts_notif_block.notifier_call = fts_panel_state_notifier;
+	ss_panel_notifier_register(&info->fts_notif_block);
 	sec_input_register_notify(&info->fts_input_nb, fts_input_notify_call, 1);
 
 	info->probe_done = true;
@@ -2953,6 +2985,7 @@ err_enable_irq:
 		info->input_dev_pad = NULL;
 	}
 err_register_input_pad:
+	ss_panel_notifier_unregister(&info->fts_notif_block);
 	input_unregister_device(info->input_dev);
 	info->input_dev = NULL;
 	info->input_dev_touch = NULL;
@@ -3039,6 +3072,7 @@ static int fts_remove(struct i2c_client *client)
 
 	info->input_dev = info->input_dev_touch;
 	input_mt_destroy_slots(info->input_dev);
+	ss_panel_notifier_unregister(&info->fts_notif_block);
 	input_unregister_device(info->input_dev);
 	info->input_dev = NULL;
 	info->input_dev_touch = NULL;

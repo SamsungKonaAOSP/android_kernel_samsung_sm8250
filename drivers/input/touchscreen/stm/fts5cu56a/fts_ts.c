@@ -139,10 +139,15 @@ static int fts_panel_state_notifier(struct notifier_block *nb,
 		goto out;
 
 	switch (panel_state) {
+	case PANEL_LPM: // Follow the behaviour of sysinput hal
+		info->press_prop = 0;
+		goto out;
 	case PANEL_ON:
+		info->press_prop = 1;
 		fts_input_open(info->input_dev);
 		goto out;
 	case PANEL_OFF:
+		info->press_prop = 0;
 		fts_input_close(info->input_dev);
 		goto out;
 	}

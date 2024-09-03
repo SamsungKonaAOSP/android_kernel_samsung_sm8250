@@ -13,6 +13,7 @@
 struct sec_ts_data *tsp_info;
 
 #include "sec_ts.h"
+#include "../../../../techpack/display/msm/samsung/ss_panel_notify.h"
 
 struct sec_ts_data *ts_dup;
 bool shutdown_is_on_going_tsp;
@@ -2742,6 +2743,8 @@ static int sec_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 		goto err_irq;
 	}
 
+	ss_panel_notifier_register(&sec_ts_notif_block)
+
 #ifdef CONFIG_SAMSUNG_TUI
 	tsp_info = ts;
 #endif
@@ -3349,6 +3352,8 @@ static int sec_ts_remove(struct i2c_client *client)
 	ts_dup = NULL;
 	ts->plat_data->power(ts, false);
 
+	ss_panel_notifier_unregister(&sec_ts_notif_block);
+
 #ifdef CONFIG_SAMSUNG_TUI
 	tsp_info = NULL;
 #endif
@@ -3488,6 +3493,38 @@ static int sec_ts_pm_resume(struct device *dev)
 	return 0;
 }
 #endif
+
+static int sec_ts_panel_state_notifier(struct notifier_block *nb,
+	unsigned long val, void *data)
+{
+	struct sec_ts_data *tc_data = container_of(nb, struct sec_ts_data, sec_ts_notif_block);
+	struct panel_state_data *evdata = (struct panel_state_data *)data;
+	unsigned int panel_state;
+
+	if (val != PANEL_EVENT_STATE_CHANGED)
+		goto out;
+
+	if (evdata)
+		panel_state = evdata->state;
+	else
+		goto out;
+
+	switch (panel_state) {
+	case PANEL_ON:
+		sec_ts_input_open(tc_data->input_dev);
+		goto out;
+	case PANEL_OFF:
+		sec_ts_input_close(tc_data->input_dev);
+		goto out;
+	}
+
+out:
+	return NOTIFY_OK;
+}
+
+static struct notifier_block sec_ts_notif_block = {
+	.notifier_call = sec_ts_panel_state_notifier,
+};
 
 #ifdef CONFIG_SAMSUNG_TUI
 extern int stui_i2c_lock(struct i2c_adapter *adap);

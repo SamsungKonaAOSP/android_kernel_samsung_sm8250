@@ -76,6 +76,7 @@
 #define FINGER_MAX			10
 #define AREA_MIN			PRESSURE_MIN
 #define AREA_MAX			PRESSURE_MAX
+#define FTS_PRESSURE_MAX	0x3f
 
 #define INT_ENABLE			1
 #define INT_DISABLE			0

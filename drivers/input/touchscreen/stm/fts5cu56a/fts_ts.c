@@ -1857,7 +1857,7 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 			info->finger[TouchID].action = p_event_coord->tchsta;
 			info->finger[TouchID].x = (p_event_coord->x_11_4 << 4) | (p_event_coord->x_3_0);
 			info->finger[TouchID].y = (p_event_coord->y_11_4 << 4) | (p_event_coord->y_3_0);
-			info->finger[TouchID].z = p_event_coord->z & 0x3F;
+			info->finger[TouchID].z = p_event_coord->z & FTS_PRESSURE_MAX;
 			info->finger[TouchID].ttype = p_event_coord->ttype_3_2 << 2 |
 							p_event_coord->ttype_1_0 << 0;
 			info->finger[TouchID].major = p_event_coord->major;
@@ -2654,9 +2654,7 @@ static int fts_parse_dt(struct i2c_client *client)
 
 	pdata->support_hover = false;
 	pdata->support_glove = false;
-#ifdef CONFIG_SEC_FACTORY
 	pdata->support_mt_pressure = true;
-#endif
 #ifdef FTS_SUPPORT_TA_MODE
 	pdata->register_cb = fts_tsp_register_callback;
 #endif
@@ -2939,10 +2937,10 @@ static void fts_set_input_prop(struct fts_ts_info *info, struct input_dev *dev, 
 	input_set_abs_params(dev, ABS_MT_POSITION_Y,
 			0, info->board->max_y, 0, 0);
 #ifdef CONFIG_SEC_FACTORY
-	input_set_abs_params(dev, ABS_MT_PRESSURE, 0, 255, 0, 0);
+	input_set_abs_params(dev, ABS_MT_PRESSURE, 0, FTS_PRESSURE_MAX, 0, 0);
 #else
 	if (info->board->support_mt_pressure)
-		input_set_abs_params(dev, ABS_MT_PRESSURE, 0, 10000, 0, 0);
+		input_set_abs_params(dev, ABS_MT_PRESSURE, 0, FTS_PRESSURE_MAX, 0, 0);
 #endif
 
 	input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);

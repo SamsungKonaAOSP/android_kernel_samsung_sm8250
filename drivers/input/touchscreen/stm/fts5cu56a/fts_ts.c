@@ -128,7 +128,8 @@ static int fts_panel_state_notifier(struct notifier_block *nb,
 {
 	struct fts_ts_info *info = container_of(nb, struct fts_ts_info, fts_notif_block);
 	struct panel_state_data *evdata = (struct panel_state_data *)data;
-	unsigned int panel_state;
+	struct panel_bl_event_data *bl_data;
+	unsigned int panel_state, hbm_state;
 
 	if (val != PANEL_EVENT_STATE_CHANGED)
 		goto out;
@@ -138,16 +139,24 @@ static int fts_panel_state_notifier(struct notifier_block *nb,
 	else
 		goto out;
 
+	if (bl_data)
+		hbm_state = bl_data->finger_mask_hbm_on;
+	else
+		goto out;
+
 	switch (panel_state) {
 	case PANEL_LPM: // Follow the behaviour of sysinput hal
 		info->press_prop = 0;
+		fts_set_press_property(info);
 		goto out;
 	case PANEL_ON:
 		info->press_prop = 1;
+		fts_set_press_property(info);
 		fts_input_open(info->input_dev);
 		goto out;
 	case PANEL_OFF:
 		info->press_prop = 0;
+		fts_set_press_property(info);
 		fts_input_close(info->input_dev);
 		goto out;
 	}
